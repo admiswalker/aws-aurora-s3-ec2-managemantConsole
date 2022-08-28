@@ -4,6 +4,96 @@ Management Console から，EC2 と S3 と Aurora を立ち上げる．
 
 ## EC2 の作成
 
+### インスタンスの起動
+- 名前: example_ec2_2208
+- OS: Amazon Linux
+- instance type: t3.micro
+- storage type: gp3
+
+- ネットワーク
+    - VPC: example_ec2_2208
+    - サブネット: example_ec2_2208_private
+    - パブリックIPの自動割り当て: 無効
+    - 既存のセキュリティグループを適用する: example_ec2_2208_private_ec2
+
+## Aurora の作成と EC2 からの接続
+### Aurora の作成
+- データベースの作成方法: 標準作成
+- エンジンタイプ: Amazon Aurora
+    - エディション: Amazon Aurora MySQL 互換
+    - バージョン: 5.7
+- テンプレート: 
+    - 開発/テスト
+- 設定
+    - DB クラスター識別子: database-1
+    - マスターユーザ名: admin
+    - pass: adminpass
+- DB インスタンスクラス
+    - バースト可能クラス (t クラスを含む)
+        - t2.small: (vCPU: 1, memory: 2 GiB) 0.023 USD/h
+        - t3.small (vCPU: 2, memory: 2 GiB): 0.0208 USD/h
+- 接続
+    - Connect to an EC2 compute resource
+        - EC2 Instance: example_ec2_2208
+    - パブリックアクセス: なし
+    - 新しい VPC セキュリティグループ
+        - 新規作成
+            - 新しい VPC セキュリティグループ名
+                - example_2208_aurora_sg
+    - RDS Proxy
+        - なし
+### EC2 からの接続
+- mysql client の install
+  ```
+  sudo yum install mysql
+  ```
+- 接続
+  ```
+  mysql -u admin -p -h [Endpoint of RDS]
+  ```
+  例: 
+  ```
+  mysql -u admin -p -h database-1-instance-1.c6dtejpehxyt.ap-northeast-1.rds.amazonaws.com
+  ```
+
+## S3 の作成と EC2 からの接続
+### S3 bucket の作成
+- bucket name: example2208
+- デフォルト暗号化: 有効
+### iam で ec2 に権限追加
+IAM → ロール → ロールを作成
+1. 信頼されたエンティティを選択
+   - AWS のサービス
+   - 一般的なユースケース
+       - EC2
+2. 許可を追加
+   - AmazonS3FullAccess
+3. 名前，確認，および作成
+   - ロール名: example2208_s3fullaccess
+### iam ロールのアタッチ
+1. 対象の EC2 に入る
+2. アクション → セキュリティ → IAM ロールを変更
+   - IAM ロールを選択: example2208_s3fullaccess
+
+### 動作確認
+```
+aws s3 ls
+```
+
+### end point の作成
+vpc → エンドポイント → エンドポイントの作成
+- 名前: example2208
+- サービス名: com.amazonaws.ap-northeast-1.s3 (タイプ: Gateway)
+- VPC: EC2 とか RDS と同じ VPC を選択する
+
+
+---
+
+[【初心者向け】RDS for MySQLを構築しEC2からアクセスしてみる](https://dev.classmethod.jp/articles/sales-rds-ec2-session/)
+
+
+---
+
 ## NAT gateway の作成
 ### VPC の作成
 - 名前: example_ec2_2208
